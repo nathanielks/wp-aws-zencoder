@@ -1,0 +1,9 @@
+{
+  "name": "nathanielks/wp-zencoder-aws",
+  "type": "wordpress-plugin",
+  "description": "Zencoder implementation for use with http://wordpress.org/plugins/amazon-s3-and-cloudfront/",
+  "license": "GPL-2.0+",
+  "require": {
+    "composer/installers": "v1.0.6"
+  }
+}
