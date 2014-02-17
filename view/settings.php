@@ -1,4 +1,4 @@
-<div class="aws-content waz-settings">
+<div class="aws-content aws-settings waz-settings">
 
 	<h3>Access Key</h3>
 
@@ -20,7 +20,7 @@
 		<?php printf( __( 'Once you&#8217;ve signed up, you can use the Full Access API Key provided, or create a new one. <a href="%s">You can view your keys here.</a>', 'waz' ), 'https://app.zencoder.com/api' ); ?>
 	</p>
 	<p>
-		<?php _e( 'Once you have the key you\'d like to use, copy the folowing code to your wp-config.php and replace the stars with the keys.', 'waz' ); ?>
+		<?php _e( 'Once you have the key you\'d like to use, copy the folowing code to your wp-config.php and replace the stars with the key.', 'waz' ); ?>
 	</p>
 
 	<pre>define( 'AWS_ZENCODER_API_KEY', '********************' );</pre>

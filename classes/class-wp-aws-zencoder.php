@@ -76,7 +76,11 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 	}
 
 	function plugin_load(){
-		// silence
+		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+		$src = plugins_url( 'assets/js/script' . $suffix . '.js', $this->plugin_file_path );
+		wp_enqueue_script( 'waz-script', $src, array( 'jquery' ), $this->get_installed_version(), true );
+
+		$this->handle_post_request();
 	}
 
 	function are_key_constants_set(){
@@ -89,6 +93,30 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		}
 
 		return $this->get_setting( 'api_key' );
+	}
+
+	function handle_post_request() {
+		if ( empty( $_POST['action'] ) || 'save' != $_POST['action'] ) {
+			return;
+		}
+
+		if ( empty( $_POST['_wpnonce'] ) || !wp_verify_nonce( $_POST['_wpnonce'], 'waz-save-settings' ) ) {
+			die( __( "Cheatin' eh?", 'waz' ) );
+		}
+
+		// Make sure $this->settings has been loaded
+		$this->get_settings();
+
+		$post_vars = array( 'api_key' );
+		foreach ( $post_vars as $var ) {
+			if ( !isset( $_POST[$var] ) ) {
+				continue;
+			}
+
+			$this->set_setting( $var, $_POST[$var] );
+		}
+
+		$this->save_settings();
 	}
 
 	/*
