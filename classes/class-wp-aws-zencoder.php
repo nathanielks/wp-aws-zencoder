@@ -17,6 +17,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		parent::__construct( $plugin_file_path );
 
 		$this->aws = $aws;
+		$this->zen = new Services_Zencoder( $this->get_api_key() );
 
 		add_action( 'aws_admin_menu', array( $this, 'admin_menu' ) );
 		add_filter( 'wp_generate_attachment_metadata', array( $this, 'wp_generate_attachment_metadata' ), 30, 2 );
@@ -130,7 +131,36 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		if ( $this->is_video( $type ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
 			if( ! empty( $s3info ) ) {
+				update_post_meta( $post_id, 'waz_zencode_status', 'pending' );
+				$encoding_job = null;
+				try {
 
+					$input = "s3://{$s3info['bucket']}/{$s3info['key']}";
+					$pathinfo = pathinfo( $input );
+					$key = trailingslashit( dirname( $input ) );
+
+					// New Encoding Job
+					$encoding_job = $this->zen->jobs->create(
+						array(
+							"input" => $input,
+							"outputs" => array(
+								array(
+									"label" => "web",
+									"url" => $key . $pathinfo['filename'] . '.mp4',
+								)
+							)
+						)
+					);
+					update_post_meta( $post_id, 'waz_zencode_status', 'submitting' );
+
+				} catch (Services_Zencoder_Exception $e) {
+					update_post_meta( $post_id, 'waz_zencode_status', 'failed' );
+					maj_error_log( 'there was an error' );
+					maj_error_log($e);
+				}
+
+				update_post_meta( $post_id, 'waz_zencode_status', 'transcoding' );
+				maj_error_log($encoding_job);
 			} // !empty
 		} // !in_array
 
@@ -141,7 +171,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		return in_array( $type, $this->accepted_mime_types() );
 	}
 
-	function accepted_mime_types( $type ){
+	function accepted_mime_types(){
 		return array(
 			'video/x-ms-asf',
 			'video/x-ms-wmv',
