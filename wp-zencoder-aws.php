@@ -19,6 +19,11 @@ Author URI: http://fightthecurrent.org
 // **********************************************************************
  */
 
+// If this file is called directly, abort.
+if ( ! defined( 'WPINC' ) ) {
+	die;
+}
+
 add_action( 'plugins_loaded', 'waz_check_required_plugins' );
 function waz_check_required_plugins() {
 
