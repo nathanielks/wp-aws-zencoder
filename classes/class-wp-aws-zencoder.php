@@ -12,18 +12,17 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		$this->plugin_menu_title = __( 'Zencoder', 'waz' );
 
 		// lets do this before anything else gets loaded
-		$this->requires();
+		$this->require_zencoder();
 
 		parent::__construct( $plugin_file_path );
 
 		$this->aws = $aws;
 
 		add_action( 'aws_admin_menu', array( $this, 'admin_menu' ) );
-
 		add_filter( 'wp_generate_attachment_metadata', array( $this, 'wp_generate_attachment_metadata' ), 30, 2 );
 	}
 
-	function requires(){
+	function require_zencoder(){
 		if( !class_exists( 'Services_Zencoder') ){
 			$file = WAZ_PATH . '/vendor/autoload.php';
 			if( file_exists( $file ) ){
@@ -51,6 +50,50 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			}
 		}
 	}
+
+	/*
+	 *Admin
+	 */
+
+	function admin_menu( $aws ) {
+		$hook_suffix = $aws->add_page( $this->plugin_title, $this->plugin_menu_title, 'manage_options', $this->plugin_slug, array( $this, 'render_page' ) );
+		add_action( 'load-' . $hook_suffix , array( $this, 'plugin_load' ) );
+	}
+
+	function render_page() {
+		$this->aws->render_view( 'header', array( 'page_title' => $this->plugin_title ) );
+
+		$aws_client = $this->aws->get_client();
+
+		if ( is_wp_error( $aws_client ) ) {
+			$this->render_view( 'error', array( 'error' => $aws_client ) );
+		}
+		else {
+			$this->render_view( 'settings' );
+		}
+
+		$this->aws->render_view( 'footer' );
+	}
+
+	function plugin_load(){
+		// silence
+	}
+
+	function are_key_constants_set(){
+		return defined( 'AWS_ZENCODER_API_KEY' );
+	}
+
+	function get_api_key() {
+		if ( $this->are_key_constants_set() ) {
+			return AWS_ZENCODER_API_KEY;
+		}
+
+		return $this->get_setting( 'api_key' );
+	}
+
+	/*
+	 *Logic
+	 */
 
 	function wp_generate_attachment_metadata( $data, $post_id ) {
 
