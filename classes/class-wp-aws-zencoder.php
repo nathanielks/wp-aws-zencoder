@@ -299,6 +299,8 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 				'channelmode' => 'stereo',
 			);
 
+			// Update the Metadata
+			wp_update_attachment_metadata( $post_id, $meta );
 
 			// Let's update the S3 information
 			$s3info = $_s3info = get_post_meta( $post_id, 'amazonS3_info', true );
