@@ -25,6 +25,9 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		// On metadata generation, let's create the Zencoder Job
 		add_filter( 'wp_generate_attachment_metadata', array( $this, 'wp_generate_attachment_metadata' ), 30, 2 );
 
+		// Let's delete the attachments
+		add_filter( 'delete_attachment', array( $this, 'delete_attachment' ), 20 );
+
 		// Rewrites
 		add_action( 'wp_loaded', array( $this, 'flush_rules' ) );
 		add_filter( 'rewrite_rules_array', array( $this, 'rewrite_rules' ) );
@@ -62,6 +65,10 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 				waz_plugin_die( $msg );
 			}
 		}
+	}
+
+	function is_plugin_setup() {
+		return (bool) $this->get_api_key() && !is_wp_error( $this->aws->get_client() );
 	}
 
 	/*
@@ -138,9 +145,8 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 	function wp_generate_attachment_metadata( $data, $post_id ) {
 
-		$type = get_post_mime_type( $post_id );
 
-		if ( $this->is_video( $type ) ) {
+		if ( $this->is_video( $post_id ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
 			if( ! empty( $s3info ) ) {
 				update_post_meta( $post_id, 'waz_encode_status', 'pending' );
@@ -183,7 +189,8 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		return $data;
 	}
 
-	function is_video( $type ){
+	function is_video( $post_id ){
+		$type = get_post_mime_type( $post_id );
 		return in_array( $type, $this->accepted_mime_types() );
 	}
 
@@ -204,6 +211,59 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			'video/x-matroska'
 		);
 	}
+
+	/*
+	 *Delete the Attachment
+	 */
+
+	function delete_attachment( $post_id ){
+		if ( ! $this->is_plugin_setup() ) {
+			return;
+		}
+
+		if ( ! $this->is_video( $post_id ) ) {
+			return;
+		}
+
+		if ( !( $s3object = $this->get_original_s3_info( $post_id ) ) ) {
+			return;
+		}
+
+       	$objects = array(
+			array(
+				'Key' => $s3object['key']
+			)
+        );
+
+		try {
+	        $this->get_s3client()->deleteObjects( array(
+	        	'Bucket' => $s3object['bucket'],
+	        	'Objects' => $objects
+	        ) );
+		}
+		catch ( Exception $e ) {
+			error_log( 'Error removing files from S3: ' . $e->getMessage() );
+			return;
+		}
+
+		delete_post_meta( $post_id, 'waz_original' );
+	}
+
+	function get_original_s3_info( $post_id ) {
+		return get_post_meta( $post_id, 'waz_original', true );
+	}
+
+	function get_s3client() {
+		if ( is_null( $this->s3client ) ) {
+			$this->s3client = $this->aws->get_client()->get( 's3' );
+		}
+
+		return $this->s3client;
+	}
+
+	/*
+	 *Rewrites
+	 */
 
 	function flush_rules() {
 		$rules = get_option( 'rewrite_rules' );
@@ -243,6 +303,10 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		array_push( $vars, 'waz_zencoder_notification' );
 		return $vars;
 	}
+
+	/*
+	 *Process notifications
+	 */
 
 	function zencoder_notification(){
 		if( true == get_query_var('waz_zencoder_notification') ){
