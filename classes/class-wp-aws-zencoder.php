@@ -159,6 +159,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 								'label' => 'web',
 								'url' => $key . $pathinfo['filename'] . '.mp4',
 								'public' => true,
+								'device_profile' => 'mobile/advanced'
 								'notifications' => array(
 									array(
 										"url" => get_home_url( get_current_blog_id(), '/waz_zencoder_notification/' )
