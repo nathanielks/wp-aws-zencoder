@@ -152,22 +152,21 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 					$key = trailingslashit( dirname( $input ) );
 
 					// New Encoding Job
-					$job = $this->zen->jobs->create(
-						array(
-							"input" => $input,
-							"outputs" => array(
-								array(
-									"label" => "web",
-									"url" => $key . $pathinfo['filename'] . '.mp4',
-									"notifications" => array(
-										array(
-											"url" => get_home_url( get_current_blog_id(), '/waz_zencoder_notification/' )
-										)
+					$job = $this->zen->jobs->create( array(
+						"input" => $input,
+						"outputs" => array(
+							array(
+								'label' => 'web',
+								'url' => $key . $pathinfo['filename'] . '.mp4',
+								'public' => true,
+								'notifications' => array(
+									array(
+										"url" => get_home_url( get_current_blog_id(), '/waz_zencoder_notification/' )
 									)
 								)
 							)
 						)
-					);
+					));
 					update_post_meta( $post_id, 'waz_encode_status', 'submitting' );
 
 				} catch (Services_Zencoder_Exception $e) {
