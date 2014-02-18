@@ -289,7 +289,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			$id3 = new getID3();
 			$qt = new getid3_quicktime( $id3 );
 			$meta['audio'] = array(
-				'dataformat' => $output->format,
+				'dataformat' => $output->audio_codec,
 				'codec' => $qt->QuicktimeAudioCodecLookup( $output->audio_codec ),
 				'sample_rate' => $output->audio_sample_rate,
 				'channels' => $output->channels,
