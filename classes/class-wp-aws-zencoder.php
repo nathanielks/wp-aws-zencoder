@@ -269,7 +269,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		$rules = get_option( 'rewrite_rules' );
 
 		if ( ! isset( $rules['waz_zencoder_notification?$'] ) ) {
-			waz_network_flush_rewrite_rules();
+			$this->flush_rewrite_rules();
 		}
 	}
 
