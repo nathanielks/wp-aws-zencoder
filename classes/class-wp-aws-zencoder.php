@@ -19,8 +19,20 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		$this->aws = $aws;
 		$this->zen = new Services_Zencoder( $this->get_api_key() );
 
+		// Admin
 		add_action( 'aws_admin_menu', array( $this, 'admin_menu' ) );
+
+		// On metadata generation, let's create the Zencoder Job
 		add_filter( 'wp_generate_attachment_metadata', array( $this, 'wp_generate_attachment_metadata' ), 30, 2 );
+
+		// Rewrites
+		add_action( 'wp_loaded', array( $this, 'flush_rules' ) );
+		add_filter( 'rewrite_rules_array', array( $this, 'rewrite_rules' ) );
+		add_filter( 'query_vars', array( $this, 'query_vars' ) );
+
+		// Catch notifications from zencoder
+		add_action( 'pre_get_posts', array( $this, 'zencoder_notification' ) );
+
 	}
 
 	function require_zencoder(){
@@ -131,7 +143,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		if ( $this->is_video( $type ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
 			if( ! empty( $s3info ) ) {
-				update_post_meta( $post_id, 'waz_zencode_status', 'pending' );
+				update_post_meta( $post_id, 'waz_encode_status', 'pending' );
 				$encoding_job = null;
 				try {
 
@@ -140,27 +152,31 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 					$key = trailingslashit( dirname( $input ) );
 
 					// New Encoding Job
-					$encoding_job = $this->zen->jobs->create(
+					$job = $this->zen->jobs->create(
 						array(
 							"input" => $input,
 							"outputs" => array(
 								array(
 									"label" => "web",
 									"url" => $key . $pathinfo['filename'] . '.mp4',
+									"notifications" => array(
+										array(
+											"url" => get_home_url( get_current_blog_id(), '/waz_zencoder_notification/' )
+										)
+									)
 								)
 							)
 						)
 					);
-					update_post_meta( $post_id, 'waz_zencode_status', 'submitting' );
+					update_post_meta( $post_id, 'waz_encode_status', 'submitting' );
 
 				} catch (Services_Zencoder_Exception $e) {
-					update_post_meta( $post_id, 'waz_zencode_status', 'failed' );
-					maj_error_log( 'there was an error' );
-					maj_error_log($e);
+					update_post_meta( $post_id, 'waz_encode_status', 'failed' );
 				}
 
-				update_post_meta( $post_id, 'waz_zencode_status', 'transcoding' );
-				maj_error_log($encoding_job);
+				update_post_meta( $post_id, 'waz_encode_status', 'transcoding' );
+				update_post_meta( $post_id, 'waz_job_id', $job->id );
+				update_post_meta( $post_id, 'waz_outputs', (array)$job->outputs );
 			} // !empty
 		} // !in_array
 
@@ -188,4 +204,127 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			'video/x-matroska'
 		);
 	}
+
+	function flush_rules() {
+		$rules = get_option( 'rewrite_rules' );
+
+		if ( ! isset( $rules['waz_zencoder_notification?$'] ) ) {
+			waz_network_flush_rewrite_rules();
+		}
+	}
+
+	function network_flush_rules(){
+		global $wp_rewrite;
+		//If multisite, we loop through all sites
+		if (is_multisite()) {
+			$sites = wp_get_sites();
+			foreach ($sites as $site) {
+				switch_to_blog($site['blog_id']);
+				//Rebuild rewrite rules for this site
+				$wp_rewrite->init();
+				//Flush them
+				$wp_rewrite->flush_rules();
+				restore_current_blog();
+			}
+			$wp_rewrite->init();
+		} else {
+			//Flush rewrite rules
+			$wp_rewrite->flush_rules();
+		}
+	}
+
+	function rewrite_rules( $rules ) {
+		$newrules = array();
+		$newrules['waz_zencoder_notification?$'] = 'index.php?waz_zencoder_notification=true';
+		return $newrules + $rules;
+	}
+
+	function query_vars( $vars ) {
+		array_push( $vars, 'waz_zencoder_notification' );
+		return $vars;
+	}
+
+	function zencoder_notification(){
+		if( true == get_query_var('waz_zencoder_notification') ){
+			try{
+				$notification = $this->zen->notifications->parseIncoming();
+				$this->process_notification( $notification );
+			} catch( Services_Zencoder_Exception $e ){
+				die( $e->getMessage() );
+			}
+			die(0);
+		}
+	}
+
+	function process_notification( $notification ){
+
+		$post_id = $this->get_post_id_from_job_id( $notification->job->id );
+
+		// If you're encoding to multiple outputs and only care when all of the outputs are finished
+		// you can check if the entire job is finished.
+		if($notification->job->state == "finished") {
+
+			$output = $notification->job->outputs['web'];
+
+			// Get the Attachment
+			$meta = $_meta = wp_get_attachment_metadata( $post_id );
+
+			require_once( ABSPATH . '/wp-includes/ID3/getid3.lib.php' );
+			require_once( ABSPATH . '/wp-includes/ID3/getid3.php' );
+			require_once( ABSPATH . '/wp-includes/ID3/module.audio-video.quicktime.php' );
+
+			// Let's start modifying the metadata
+			// TODO figure out a viable way to use built in WP ID3
+			$meta['filesize'] = $output->file_size_in_bytes;
+			$meta['mime_type'] = 'video/mp4';
+			$meta['length'] = ceil( $output->duration_in_ms * 0.001 );
+			$meta['length_formatted'] = getid3_lib::PlaytimeString( $meta['length'] );
+			$meta['width'] = $output->width;
+			$meta['height'] = $output->height;
+			$meta['fileformat'] = 'mp4';
+			$meta['dataformat'] = $output->format;
+			$meta['codec'] = $output->video_codec;
+
+			// TODO this needs to take into consideration other file formats
+			// other than quicktime
+			$id3 = new getID3();
+			$qt = new getid3_quicktime( $id3 );
+			$meta['audio'] = array(
+				'dataformat' => $output->format,
+				'codec' => $qt->QuicktimeAudioCodecLookup( $output->audio_codec ),
+				'sample_rate' => $output->audio_sample_rate,
+				'channels' => $output->channels,
+				//'bits_per_sample' => 16,
+				'lossless' => false,
+				'channelmode' => 'stereo',
+			);
+
+
+			// Let's update the S3 information
+			$s3info = $_s3info = get_post_meta( $post_id, 'amazonS3_info', true );
+			$parsed = parse_url( $output->url );
+			$key = ltrim ($parsed['path'],'/');
+			$s3info['key'] = $key;
+			update_post_meta( $post_id, 'amazonS3_info', $s3info );
+
+			// And we're done!
+			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
+
+		} elseif ($notification->job->outputs[0]->state == "cancelled") {
+			update_post_meta( $post_id, 'waz_encode_status', 'cancelled' );
+		} else {
+			update_post_meta( $post_id, 'waz_encode_status', 'failed' );
+		}
+
+	}
+
+	function get_post_id_from_job_id( $job_id ){
+		global $wpdb;
+		$results = $wpdb->get_results( "select post_id from $wpdb->postmeta where meta_value = $job_id" );
+		if( !empty( $results ) ){
+			return (int)$results[0]->post_id;
+		}
+		return 0;
+	}
+
 }
