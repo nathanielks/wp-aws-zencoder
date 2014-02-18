@@ -159,7 +159,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 								'label' => 'web',
 								'url' => $key . $pathinfo['filename'] . '.mp4',
 								'public' => true,
-								'device_profile' => 'mobile/advanced'
+								'device_profile' => 'mobile/advanced',
 								'notifications' => array(
 									array(
 										"url" => get_home_url( get_current_blog_id(), '/waz_zencoder_notification/' )
@@ -304,10 +304,18 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 			// Let's update the S3 information
 			$s3info = $_s3info = get_post_meta( $post_id, 'amazonS3_info', true );
+
 			$parsed = parse_url( $output->url );
+			$host = explode( '.', $parsed['host'] );
 			$key = ltrim ($parsed['path'],'/');
+			$s3info['bucket'] = $host[0];
 			$s3info['key'] = $key;
+
+			// Update S3 to point to new file
 			update_post_meta( $post_id, 'amazonS3_info', $s3info );
+
+			// Save original file for later
+			update_post_meta( $post_id, 'waz_original', $_s3info );
 
 			// And we're done!
 			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
