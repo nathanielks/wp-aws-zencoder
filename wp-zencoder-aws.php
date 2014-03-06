@@ -98,8 +98,9 @@ function waz_activate_or_install_message( $title, $url, $required, $slug, $file 
 }
 
 function waz_init( $aws ) {
+	global $waz;
     require_once 'classes/class-wp-aws-zencoder.php';
-    $as3cf = new WP_AWS_Zencoder( __FILE__, $aws );
+    $waz = new WP_AWS_Zencoder( __FILE__, $aws );
 }
 
 add_action( 'aws_init', 'waz_init' );

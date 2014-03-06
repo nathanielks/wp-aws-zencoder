@@ -322,6 +322,8 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 	function process_notification( $notification ){
 
+		do_action( 'waz_before_process_notification', $notification );
+
 		$post_id = $this->get_post_id_from_job_id( $notification->job->id );
 
 		// If you're encoding to multiple outputs and only care when all of the outputs are finished
@@ -384,11 +386,13 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			// And we're done!
 			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
 
-		} elseif ($notification->job->outputs[0]->state == "cancelled") {
+		} elseif ( isset( $notification->job->outputs ) && "cancelled" == $notification->job->outputs[0]->state ) {
 			update_post_meta( $post_id, 'waz_encode_status', 'cancelled' );
 		} else {
 			update_post_meta( $post_id, 'waz_encode_status', 'failed' );
 		}
+
+		do_action( 'waz_after_process_notification', $notification );
 
 	}
 
