@@ -326,7 +326,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 		// If you're encoding to multiple outputs and only care when all of the outputs are finished
 		// you can check if the entire job is finished.
-		if($notification->job->state == "finished") {
+		if( 0 !== $post_id && $notification->job->state == "finished" ) {
 
 			$output = $notification->job->outputs['web'];
 
