@@ -1,7 +1,7 @@
 === AWS Zencoder ===
 Contributors: fightthecurrent
 Tags: aws, amazon, s3, zencoder
-Donate link: http://fightthecurrent.org/donate/8
+Donate link: http://fightthecurrent.org/donate/
 Tested up to: 3.8.1
 Stable tag: 0.1.0
 License: GPLv2 or later
