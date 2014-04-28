@@ -175,14 +175,16 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 						)
 					));
 					update_post_meta( $post_id, 'waz_encode_status', 'submitting' );
+					update_post_meta( $post_id, 'waz_encode_status', 'transcoding' );
+					update_post_meta( $post_id, 'waz_job_id', $job->id );
+					update_post_meta( $post_id, 'waz_outputs', (array)$job->outputs );
 
 				} catch (Services_Zencoder_Exception $e) {
+					error_log( $e->getMessage() );
 					update_post_meta( $post_id, 'waz_encode_status', 'failed' );
+					update_post_meta( $post_id, 'waz_encode_error', $e->getErrors() );
 				}
 
-				update_post_meta( $post_id, 'waz_encode_status', 'transcoding' );
-				update_post_meta( $post_id, 'waz_job_id', $job->id );
-				update_post_meta( $post_id, 'waz_outputs', (array)$job->outputs );
 			} // !empty
 		} // !in_array
 
