@@ -10,6 +10,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 		$this->plugin_title = __( 'WP AWS Zencoder', 'waz' );
 		$this->plugin_menu_title = __( 'Zencoder', 'waz' );
+		$this->plugin_slug = 'wp-aws-zencoder';
 
 		// lets do this before anything else gets loaded
 		$this->require_zencoder();

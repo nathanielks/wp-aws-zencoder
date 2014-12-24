@@ -25,7 +25,9 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 if( ! defined( 'WAZ_PATH' ) )
-    define( 'WAZ_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
+	define( 'WAZ_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
+
+$GLOBALS['aws_meta']['wp-aws-zencoder']['version'] = '0.1.0';
 
 add_action( 'plugins_loaded', 'waz_check_required_plugins' );
 function waz_check_required_plugins() {
