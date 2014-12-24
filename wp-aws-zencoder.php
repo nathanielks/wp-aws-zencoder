@@ -43,12 +43,13 @@ function waz_check_required_plugins() {
 }
 
 function waz_activate_aws(){
-	$url = 'http://wordpress.org/plugins/amazon-s3-and-cloudfront/';
+	$url = 'http://wordpress.org/plugins/amazon-web-services/';
 	$title = 'AWS&nbsp;Zencoder';
-	$slug = 'amazon-s3-and-cloudfront';
-	$file = $slug . '/wordpress-s3.php';
+	$required = 'Amazon&nbsp;Web&nbsp;Services';
+	$slug = 'amazon-web-services';
+	$file = $slug . '/amazon-web-services.php';
 
-	waz_activate_or_install( $title, $url, $slug, $file );
+	waz_activate_or_install_message( $title, $url, $required, $slug, $file );
 }
 
 function waz_check_as3cf() {
