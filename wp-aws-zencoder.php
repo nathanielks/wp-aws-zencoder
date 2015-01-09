@@ -4,7 +4,7 @@ Plugin Name: AWS Zencoder
 Plugin URI: http://github.com/nathanielks/wp-aws-zencoder
 Description: Automatically submits transcode jobs based on MIME type of uploaded media. Made for use with http://wordpress.org/plugins/amazon-s3-and-cloudfront/
 Author: Nathaniel Schweinberg
-Version: 0.1.0
+Version: 0.1.1
 Author URI: http://fightthecurrent.org
 
 // Copyright (c) 2013 Nathaniel Schweinberg. All rights reserved.
@@ -27,7 +27,7 @@ if ( ! defined( 'WPINC' ) ) {
 if( ! defined( 'WAZ_PATH' ) )
 	define( 'WAZ_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 
-$GLOBALS['aws_meta']['wp-aws-zencoder']['version'] = '0.1.0';
+$GLOBALS['aws_meta']['wp-aws-zencoder']['version'] = '0.1.1';
 
 add_action( 'plugins_loaded', 'waz_check_required_plugins' );
 function waz_check_required_plugins() {

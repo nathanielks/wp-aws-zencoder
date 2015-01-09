@@ -39,6 +39,10 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 	}
 
+	function get_installed_version(){
+		return $GLOBALS['aws_meta']['wp-aws-zencoder']['version'];
+	}
+
 	function require_zencoder(){
 		if( !class_exists( 'Services_Zencoder') ){
 			$file = WAZ_PATH . '/vendor/autoload.php';
