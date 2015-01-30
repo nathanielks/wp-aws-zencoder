@@ -24,7 +24,7 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 		add_action( 'aws_admin_menu', array( $this, 'admin_menu' ) );
 
 		// On metadata generation, let's create the Zencoder Job
-		add_filter( 'wp_generate_attachment_metadata', array( $this, 'wp_generate_attachment_metadata' ), 30, 2 );
+		add_filter( 'wp_update_attachment_metadata', array( $this, 'wp_update_attachment_metadata' ), 200, 2 );
 
 		// Let's delete the attachments
 		add_filter( 'delete_attachment', array( $this, 'delete_attachment' ), 20 );
@@ -148,16 +148,13 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 	 *Logic
 	 */
 
-	function wp_generate_attachment_metadata( $data, $post_id ) {
-
-
+	function wp_update_attachment_metadata( $data, $post_id ) {
 		if ( $this->is_video( $post_id ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
 			if( ! empty( $s3info ) ) {
 				update_post_meta( $post_id, 'waz_encode_status', 'pending' );
 				$encoding_job = null;
 				try {
-
 					$input = "s3://{$s3info['bucket']}/{$s3info['key']}";
 					$pathinfo = pathinfo( $input );
 					$key = trailingslashit( dirname( $input ) );
