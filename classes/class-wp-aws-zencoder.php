@@ -151,7 +151,8 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 	function wp_update_attachment_metadata( $data, $post_id ) {
 		if ( $this->is_video( $post_id ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
-			if( ! empty( $s3info ) ) {
+			$encoding_status = get_post_meta( $post_id, 'waz_encode_status', true );
+			if( empty( $encoding_status ) && ! empty( $s3info ) ) {
 				update_post_meta( $post_id, 'waz_encode_status', 'pending' );
 				$encoding_job = null;
 				try {
