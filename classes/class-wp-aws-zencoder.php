@@ -149,13 +149,10 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 	 */
 
 	function wp_update_attachment_metadata( $data, $post_id ) {
-		error_log('attachment');
 		if ( $this->is_video( $post_id ) ) {
 			$s3info = get_post_meta( $post_id, 'amazonS3_info', true );
 			$encoding_status = get_post_meta( $post_id, 'waz_encode_status', true );
-			error_log('encoding status');
 			if( empty( $encoding_status ) && ! empty( $s3info ) ) {
-				error_log('lets start processing');
 				update_post_meta( $post_id, 'waz_encode_status', 'pending' );
 				$encoding_job = null;
 				try {
@@ -191,9 +188,6 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 					update_post_meta( $post_id, 'waz_encode_status', 'failed' );
 					update_post_meta( $post_id, 'waz_encode_error', $e->getErrors() );
 				}
-				error_log( 'Post ID: ' . $post_id);
-				error_log( 'Blog ID: ' . get_current_blog_id());
-				error_log('done processing');
 			} // !empty
 		} // !in_array
 
@@ -401,14 +395,11 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			// And we're done!
 			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
 
-			echo 'Success!';
-		} elseif ( isset( $notification->job->outputs ) && "cancelled" == $notification->job->outputs[0]->state ) {
-			update_post_meta( $post_id, 'waz_encode_status', 'cancelled' );
-			echo 'Canceled';
 		} else {
 			update_post_meta( $post_id, 'waz_encode_status', 'failed' );
-			echo 'Failed';
+			update_post_meta( $post_id, 'waz_notification_response', $notification );
 		}
+		echo 'Received!';
 
 		do_action( 'waz_after_process_notification', $notification );
 		die(0);
