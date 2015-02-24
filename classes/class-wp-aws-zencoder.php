@@ -181,7 +181,9 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 					update_post_meta( $post_id, 'waz_encode_status', 'transcoding' );
 					update_post_meta( $post_id, 'waz_job_id', $job->id );
 					update_post_meta( $post_id, 'waz_outputs', (array)$job->outputs );
-
+					if( is_multisite() ){
+						update_site_option( 'waz_job_' . $job->id . '_blog_id', get_current_blog_id() );
+					}
 				} catch (Services_Zencoder_Exception $e) {
 					error_log_array( $e->getMessage() );
 					error_log_array( $e->getErrors() );
@@ -333,11 +335,20 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 		do_action( 'waz_before_process_notification', $notification );
 
-		$post_id = $this->get_post_id_from_job_id( $notification->job->id );
+		$ids = $this->get_site_and_post_id_from_job_id( $notification->job->id );
+		$post_id = $ids['post'];
+		$site_id = $ids['site'];
+
+		$switched = false;
+		if( 0 != $site_id ){
+			switch_to_blog( $site_id );
+			$switched = true;
+		}
 
 		// If you're encoding to multiple outputs and only care when all of the outputs are finished
 		// you can check if the entire job is finished.
-		if( 0 !== $post_id && $notification->job->state == "finished" ) {
+		if( 0 !== $ids['post'] && $notification->job->state == "finished" ) {
+
 
 			$output = $notification->job->outputs['web'];
 
@@ -394,12 +405,18 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 			// And we're done!
 			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
-
+			foreach( $ids as $key => $id ){
+				echo ucfirst($key) . ': ' . $id . "\n";
+			}
 		} else {
 			update_post_meta( $post_id, 'waz_encode_status', 'failed' );
 			update_post_meta( $post_id, 'waz_notification_response', $notification );
 		}
 		echo 'Received!';
+
+		if( $switched ){
+			restore_current_blog();
+		}
 
 		do_action( 'waz_after_process_notification', $notification );
 		die(0);
@@ -412,6 +429,24 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 			return (int)$results[0]->post_id;
 		}
 		return 0;
+	}
+
+	function get_site_and_post_id_from_job_id( $job_id ){
+		global $wpdb;
+		$return = array(
+			'site' => 0,
+			'post' => 0,
+		);
+		if( is_multisite() ){
+			$return['site'] = get_site_option( 'waz_job_' . $job_id . '_blog_id' );
+		}
+		$site_id = ( !empty( $return['site'] ) && 1 != $return['site'] ) ? $return['site'] . '_' : '';
+		$postmeta = $wpdb->prefix . $site_id . 'postmeta';
+		$results = $wpdb->get_results( "select post_id from $postmeta where meta_value = $job_id" );
+		if( !empty( $results ) ){
+			$return ['post'] = (int)$results[0]->post_id;
+		}
+		return $return;
 	}
 
 }
