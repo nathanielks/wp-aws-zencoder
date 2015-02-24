@@ -405,6 +405,10 @@ class WP_AWS_Zencoder extends AWS_Plugin_Base {
 
 			// And we're done!
 			update_post_meta( $post_id, 'waz_encode_status', 'finished' );
+
+			// Clean up after ourselves
+			delete_site_option('waz_job_' . $notification->job->id . '_blog_id');
+
 			foreach( $ids as $key => $id ){
 				echo ucfirst($key) . ': ' . $id . "\n";
 			}
